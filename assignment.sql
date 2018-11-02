@@ -114,7 +114,7 @@
 	$$ LANGUAGE plpgsql
 
 -- Task – create a function that returns the length of a mediatype from the mediatype table
-	CREATE OR REPLACE FUNCTION get_mediatype_length (mediaID INTEGER)
+	CREATE OR REPLACE FUNCTION get_mediatype_length (mediaid INTEGER)
 	RETURNS INTEGER AS $$
 		DECLARE
 			mediatype_length TEXT;
@@ -137,7 +137,7 @@
 	$$ LANGUAGE plpgsql;
 
 -- Task – Create a function that returns the most expensive track
-	CREATE OR REPLACE FUNCTION getExpensiveTrack()
+	CREATE OR REPLACE FUNCTION get_most_expensive_track()
 	RETURNS TABLE(
 		name VARCHAR(200),
 		untiprice NUMERIC(10,2)
@@ -153,7 +153,7 @@
 
 -- 3.3 User Defined Scalar Functions
 -- Task – Create a function that returns the average price of invoiceline items in the invoiceline table
-	CREATE OR REPLACE FUNCTION gil()
+	CREATE OR REPLACE FUNCTION average_invoice_price()
 	RETURNS TEXT AS $$
 	DECLARE
 		price NUMERIC(5,2);
@@ -167,10 +167,10 @@
 -- Task – Create a function that returns all employees who are born after 1968.
 	CREATE OR REPLACE FUNCTION employees_after_1968()
 	RETURNS TABLE(
-		employeeid INTEGER, lastname VARCHAR(20), firstname VARCHAR(20),
-		title VARCHAR(30), reportsto INTEGER, birthdate timestamp, hiredate timestamp,
-		address VARCHAR(70), city VARCHAR(40), state VARCHAR(40), country VARCHAR(40),
-		postalcode VARCHAR(10), phone VARCHAR(24), fax VARCHAR(24), email VARCHAR(60)
+		employeeid INTEGER,     lastname VARCHAR(20), firstname VARCHAR(20),
+		title VARCHAR(30),      reportsto INTEGER,    birthdate timestamp, hiredate timestamp,
+		address VARCHAR(70),    city VARCHAR(40),     state VARCHAR(40),   country VARCHAR(40),
+		postalcode VARCHAR(10), phone VARCHAR(24),    fax VARCHAR(24),     email VARCHAR(60)
 	) AS $$
 		BEGIN
 			RETURN QUERY
@@ -182,7 +182,7 @@
 --  In this section you will be creating and executing stored procedures. You will be creating various types of stored procedures that take input and output parameters.
 -- 4.1 Basic Stored Procedure
 -- Task – Create a stored procedure that selects the first and last names of all the employees.
-	CREATE OR REPLACE FUNCTION getEmployees()
+	CREATE OR REPLACE FUNCTION get_employees_fl_name()
 	RETURNS TABLE(
 		firstname VARCHAR(20),
 		lastname VARCHAR(20)
@@ -230,7 +230,7 @@
 $$ LANGUAGE plpgsql;
 -- 4.3 Stored Procedure Output Parameters
 -- Task – Create a stored procedure that returns the name and company of a customer.
-	CREATE OR REPLACE FUNCTION getCustomerCompany(customer_id INTEGER)
+	CREATE OR REPLACE FUNCTION get_customer_company(customer_id INTEGER)
 	RETURNS TABLE (
 		firstname VARCHAR(20),
 		lastname VARCHAR(20),
@@ -247,7 +247,7 @@ $$ LANGUAGE plpgsql;
 -- 5.0 Transactions
 -- In this section you will be working with transactions. Transactions are usually nested within a stored procedure. You will also be working with handling errors in your SQL.
 -- Task – Create a transaction that given a invoiceId will delete that invoice (There may be constraints that rely on this, find out how to resolve them).
-	CREATE OR REPLACE FUNCTION removeInvoice(invoice_ID INTEGER)
+	CREATE OR REPLACE FUNCTION remove_invoice(invoice_ID INTEGER)
 	RETURNS VOID AS $$
 	BEGIN
 		DELETE FROM invoice
@@ -275,15 +275,99 @@ $$ LANGUAGE plpgsql;
 	SELECT removeInvoice(412); -- because the constraints have been changed, this will no longer fail
 
 -- Task – Create a transaction nested within a stored procedure that inserts a new record in the Customer table
+	CREATE OR REPLACE FUNCTION insert_new_customer(
+		newcustomerid INTEGER, 
+		newfirstname VARCHAR(40), 
+		newlastname VARCHAR(20), 
+		newcompany VARCHAR(80), 
+		newadddress VARCHAR(70), 
+		newcity VARCHAR(40), 
+		newstate VARCHAR(40), 
+		newcountry VARCHAR(40), 
+		newpostalcode VARCHAR(10), 
+		newphone VARCHAR(24), 
+		newfax VARCHAR(24), 
+		newemail VARCHAR(60), 
+		newsupportrepid INTEGER
+	)
+	RETURNS VOID AS $$
+		BEGIN
+			INSERT INTO customer(
+				customerid, firstname, lastname, company, address,
+				city, state, country, postalcode, phone, fax, email,
+				supportrepid
+			)
+			VALUES(
+				newcustomerid, newfirstname, newlastname, newcompany, newadddress,
+				newcity, newstate, newcountry, newpostalcode, newphone, newfax, newemail, 
+				newsupportrepid
+			);
+		END;
+	$$ LANGUAGE plpgsql;
+
 -- 6.0 Triggers
 -- In this section you will create various kinds of triggers that work when certain DML statements are executed on a table.
 -- 6.1 AFTER/FOR
 -- Task - Create an after insert trigger on the employee table fired after a new record is inserted into the table.
+	CREATE OR REPLACE FUNCTION after_insert()
+	RETURNS TRIGGER AS $$
+		BEGIN
+			-- STUFF HAPPENS HERE
+		END;
+	$$ LANGUAGE plpgsql;
+
+	CREATE TRIGGER insert_trigger
+		AFTER INSERT
+		ON employee
+		FOR EACH ROW
+		EXECUTE PROCEDURE after_insert();
+
 -- Task – Create an after update trigger on the album table that fires after a row is inserted in the table
+	CREATE OR REPLACE FUNCTION after_update()
+	RETURNS TRIGGER AS $$
+		BEGIN
+			--STUFF HAPPENS HERE
+		END;
+	$$ LANGUAGE plpgsql;
+
+	CREATE TRIGGER update_trigger
+		AFTER UPDATE
+		ON album
+		FOR EACH ROW
+		EXECUTE PROCEDURE after_update();
+
 -- Task – Create an after delete trigger on the customer table that fires after a row is deleted from the table.
+	CREATE OR REPLACE FUNCTION after_delete()
+	RETURNS TRIGGER AS $$
+		BEGIN
+			--STUFF HAPPENS HERE
+		END;
+	$$ LANGUAGE plpgsql;
+
+	CREATE TRIGGER delete_trigger
+		AFTER DELETE
+		ON customer
+		FOR EACH ROW
+		EXECUTE PROCEDURE after_delete();
 
 -- 6.2 Before
 -- Task – Create a before trigger that restricts the deletion of any invoice that is priced over 50 dollars.
+	CREATE OR REPLACE FUNCTION limited_delete()
+	RETURN TRIGGER AS $$
+		BEGIN
+			IF OLD.total > 50 THEN
+				RAISE EXCEPTION 'Inovices with a total greater then $50.00 cannot be deleted';
+			END IF;
+			RETURN NEW;
+		END;
+	$$ LANGUAGE plpgsql;
+
+	CREATE TRIGGER invoive_delete_upper_limit
+		BEFORE DELETE
+		ON invoice
+		FOR EACH ROW
+		EXECUTE PROCEDURE limited_delete();
+
 -- 7.0 JOINS
 -- In this section you will be working with combing various tables through the use of joins. You will work with outer, inner, right, left, cross, and self joins.
 -- 7.1 INNER
